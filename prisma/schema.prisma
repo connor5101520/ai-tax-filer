@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -15,6 +14,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   taxReturns TaxReturn[]
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
 }
 
 model TaxReturn {
@@ -25,7 +28,7 @@ model TaxReturn {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
   input  ReturnInput?
@@ -36,12 +39,11 @@ model TaxReturn {
 
 model ReturnInput {
   id            String   @id @default(cuid())
-  filingStatus  String   // "SINGLE" | "MFJ"
+  filingStatus  String
   dependentsU17 Int      @default(0)
-  w2Wages       Int      // store cents? we’ll upgrade later; keep simple for now
+  w2Wages       Int
   w2Withholding Int
 
-  // identity (we’ll encrypt SSN later)
   firstName String
   lastName  String
   ssnLast4  String
@@ -51,7 +53,7 @@ model ReturnInput {
   state     String
   zip       String
 
-  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id])
+  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id], onDelete: Cascade)
   taxReturnId String    @unique
 }
 
@@ -65,6 +67,44 @@ model ReturnResult {
   refund        Int
   amountOwed    Int
 
-  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id])
+  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id], onDelete: Cascade)
   taxReturnId String    @unique
+}
+
+
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
