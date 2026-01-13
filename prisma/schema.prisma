@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  taxReturns TaxReturn[]
+}
+
+model TaxReturn {
+  id        String   @id @default(cuid())
+  year      Int
+  status    String   @default("IN_PROGRESS")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  input  ReturnInput?
+  result ReturnResult?
+
+  @@unique([userId, year])
+}
+
+model ReturnInput {
+  id            String   @id @default(cuid())
+  filingStatus  String   // "SINGLE" | "MFJ"
+  dependentsU17 Int      @default(0)
+  w2Wages       Int      // store cents? we’ll upgrade later; keep simple for now
+  w2Withholding Int
+
+  // identity (we’ll encrypt SSN later)
+  firstName String
+  lastName  String
+  ssnLast4  String
+  address1  String
+  address2  String?
+  city      String
+  state     String
+  zip       String
+
+  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id])
+  taxReturnId String    @unique
+}
+
+model ReturnResult {
+  id            String @id @default(cuid())
+  agi           Int
+  taxableIncome Int
+  tax           Int
+  credits       Int
+  payments      Int
+  refund        Int
+  amountOwed    Int
+
+  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id])
+  taxReturnId String    @unique
+}
